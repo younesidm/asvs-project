@@ -1,0 +1,346 @@
+<div class="table-container">
+
+  <!-- Chapter Stats Bar -->
+  <div class="chapter-stats-bar">
+    <div class="chapter-info">
+      <span class="chapter-name">{{ selectedChapter }}</span>
+      <span class="chapter-req-count">{{ chapterRequirements.length }} requirements</span>
+    </div>
+    <div class="chapter-score">
+      <div class="mini-progress">
+        <div class="mini-fill pass" [style.width.%]="chapterRequirements.length > 0 ? (getPassCount() / chapterRequirements.length) * 100 : 0"></div>
+        <div class="mini-fill fail" [style.width.%]="chapterRequirements.length > 0 ? (getFailCount() / chapterRequirements.length) * 100 : 0"></div>
+      </div>
+      <div class="chapter-badges">
+        <span class="badge pass">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          {{ getPassCount() }}
+        </span>
+        <span class="badge fail">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+          {{ getFailCount() }}
+        </span>
+        <span class="badge score">{{ getChapterPercentage() }}%</span>
+      </div>
+    </div>
+
+    <div class="export-wrapper">
+      <button class="btn-export-sm" (click)="toggleExportMenu()">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Export
+      </button>
+      <div class="export-menu" *ngIf="exportMenuOpen">
+        <div class="export-section">
+          <span class="export-lbl">CSV / Excel</span>
+          <button (click)="exportExcel('all')">All Requirements</button>
+          <button (click)="exportExcel('pass')">Passed Only</button>
+          <button (click)="exportExcel('fail')">Failed Only</button>
+        </div>
+        <div class="export-divider"></div>
+        <div class="export-section">
+          <span class="export-lbl">JSON</span>
+          <button (click)="exportJSON('all')">All Requirements</button>
+          <button (click)="exportJSON('pass')">Passed Only</button>
+          <button (click)="exportJSON('fail')">Failed Only</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters Bar -->
+  <div class="filters-bar">
+    <div class="search-wrap">
+      <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input
+        type="text"
+        placeholder="Search by code, area, or requirement..."
+        [(ngModel)]="searchQuery"
+        (ngModelChange)="onSearchChange()"
+        class="search-input"
+      />
+      <button class="clear-search" *ngIf="searchQuery" (click)="searchQuery = ''; onSearchChange()">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="filter-group">
+      <select [(ngModel)]="selectedLevel" (ngModelChange)="onFilterChange()" class="filter-select">
+        <option value="All">All Levels</option>
+        <option value="1">Level 1</option>
+        <option value="2">Level 2</option>
+        <option value="3">Level 3</option>
+      </select>
+      <select [(ngModel)]="selectedStatus" (ngModelChange)="onFilterChange()" class="filter-select">
+        <option value="All">All Status</option>
+        <option value="pass">Passed</option>
+        <option value="fail">Failed</option>
+        <option value="pending">Not Reviewed</option>
+      </select>
+    </div>
+
+    <span class="results-count">{{ filteredRequirements.length }} results</span>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrapper">
+    <table class="req-table">
+      <thead>
+        <tr>
+          <th class="th-code">Code</th>
+          <th class="th-area">Area</th>
+          <th class="th-level">Level</th>
+          <th class="th-cwe">CWE</th>
+          <th class="th-req">Requirement</th>
+          <th class="th-status">Assessment</th>
+          <th class="th-action">Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let r of paginatedRequirements"
+            [class.row-pass]="r.status === 'pass'"
+            [class.row-fail]="r.status === 'fail'">
+
+          <td class="td-code">
+            <span class="code-tag">{{ r.code }}</span>
+          </td>
+          <td class="td-area">
+            <span class="area-text">{{ r.area }}</span>
+          </td>
+          <td class="td-level">
+            <span class="level-badge" [class]="'l' + r.level">L{{ r.level }}</span>
+          </td>
+          <td class="td-cwe">
+            <span class="cwe-tag" *ngIf="r.cwe">{{ r.cwe }}</span>
+            <span class="cwe-empty" *ngIf="!r.cwe">—</span>
+          </td>
+          <td class="td-req">
+            <p class="req-text">{{ r.requirement }}</p>
+          </td>
+          <td class="td-status">
+            <div class="status-actions">
+              <button class="btn-pass"
+                      [class.active]="r.status === 'pass'"
+                      (click)="setStatus(r, 'pass')"
+                      title="Mark as Passed">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Pass
+              </button>
+              <button class="btn-fail"
+                      [class.active]="r.status === 'fail'"
+                      (click)="setStatus(r, 'fail')"
+                      title="Mark as Failed">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+                Fail
+              </button>
+            </div>
+          </td>
+          <td class="td-action">
+            <button class="btn-details" (click)="showDetails(r)">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              AI Info
+            </button>
+          </td>
+        </tr>
+
+        <tr *ngIf="paginatedRequirements.length === 0">
+          <td colspan="7" class="empty-row">
+            <div class="empty-state">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <p>No requirements match your filters.</p>
+              <button (click)="searchQuery = ''; selectedLevel = 'All'; selectedStatus = 'All'; onFilterChange()">
+                Clear Filters
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination" *ngIf="totalPages > 1">
+    <button class="pg-btn" [disabled]="currentPage === 1" (click)="changePage(currentPage - 1)">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </button>
+    <ng-container *ngFor="let page of pages">
+      <span *ngIf="page === -1" class="pg-ellipsis">...</span>
+      <button *ngIf="page !== -1"
+              class="pg-btn"
+              [class.active]="page === currentPage"
+              (click)="changePage(page)">
+        {{ page }}
+      </button>
+    </ng-container>
+    <button class="pg-btn" [disabled]="currentPage === totalPages" (click)="changePage(currentPage + 1)">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </button>
+    <span class="pg-info">Page {{ currentPage }} of {{ totalPages }}</span>
+  </div>
+
+</div>
+
+<!-- AI Details Modal -->
+<div class="modal-overlay" *ngIf="selectedRequirement" (click)="closeModal()">
+  <div class="modal-card" (click)="$event.stopPropagation()">
+
+    <button class="modal-close" (click)="closeModal()">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"/>
+        <line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+
+    <div class="modal-header">
+      <div class="modal-badges">
+        <span class="badge-code">{{ selectedRequirement.code }}</span>
+        <span class="badge-level" [class]="'l' + selectedRequirement.level">Level {{ selectedRequirement.level }}</span>
+        <span class="badge-risk" [class]="getRiskColor(selectedRequirement.riskLevel || '')"
+              *ngIf="selectedRequirement.riskLevel && !selectedRequirement.loading">
+          {{ selectedRequirement.riskLevel }}
+        </span>
+        <span class="badge-status pass" *ngIf="selectedRequirement.status === 'pass'">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Passed
+        </span>
+        <span class="badge-status fail" *ngIf="selectedRequirement.status === 'fail'">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+          Failed
+        </span>
+      </div>
+      <div class="modal-chapter">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+        </svg>
+        {{ selectedRequirement.chapter }}
+      </div>
+    </div>
+
+    <h2 class="modal-title">{{ selectedRequirement.requirement }}</h2>
+
+    <div class="modal-loading" *ngIf="selectedRequirement.loading">
+      <div class="loading-dots">
+        <div></div><div></div><div></div>
+      </div>
+      <p>Generating AI explanation...</p>
+    </div>
+
+    <div class="modal-body" *ngIf="!selectedRequirement.loading">
+      <div class="modal-section" *ngIf="selectedRequirement.explanation">
+        <div class="section-label">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+          Explanation
+        </div>
+        <p class="section-content">{{ selectedRequirement.explanation }}</p>
+      </div>
+
+      <div class="modal-section example" *ngIf="selectedRequirement.example">
+        <div class="section-label">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 18 22 12 16 6"/>
+            <polyline points="8 6 2 12 8 18"/>
+          </svg>
+          Practical Example
+        </div>
+        <p class="section-content">{{ selectedRequirement.example }}</p>
+      </div>
+
+      <div class="modal-section implementation" *ngIf="selectedRequirement.implementation">
+        <div class="section-label">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 11 12 14 22 4"/>
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+          </svg>
+          Implementation Steps
+        </div>
+        <p class="section-content">{{ selectedRequirement.implementation }}</p>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <div class="modal-assess">
+        <span class="assess-label">Assessment</span>
+        <div class="assess-actions">
+          <button class="modal-btn-pass"
+                  [class.active]="selectedRequirement.status === 'pass'"
+                  (click)="setStatus(selectedRequirement, 'pass')">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Mark as Pass
+          </button>
+          <button class="modal-btn-fail"
+                  [class.active]="selectedRequirement.status === 'fail'"
+                  (click)="setStatus(selectedRequirement, 'fail')">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+            Mark as Fail
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

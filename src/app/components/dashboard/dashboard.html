@@ -1,0 +1,310 @@
+<div class="dashboard" *ngIf="!loading; else loadingTpl">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-left">
+      <h1 class="page-title">Security Compliance Dashboard</h1>
+      <p class="page-subtitle">Track and manage your OWASP ASVS compliance status</p>
+    </div>
+    <div class="header-actions">
+      <div class="export-wrapper" *ngIf="complianceService.totalCount() > 0">
+        <button class="btn-export" (click)="toggleExportMenu()">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Export
+        </button>
+        <div class="export-menu" *ngIf="exportMenuOpen">
+          <div class="export-section">
+            <span class="export-section-label">Export as CSV/Excel</span>
+            <button (click)="exportExcel('all')">All Requirements</button>
+            <button (click)="exportExcel('pass')">Passed Only</button>
+            <button (click)="exportExcel('fail')">Failed Only</button>
+          </div>
+          <div class="export-divider"></div>
+          <div class="export-section">
+            <span class="export-section-label">Export as JSON</span>
+            <button (click)="exportJSON('all')">All Requirements</button>
+            <button (click)="exportJSON('pass')">Passed Only</button>
+            <button (click)="exportJSON('fail')">Failed Only</button>
+          </div>
+        </div>
+      </div>
+      <a routerLink="/requirements" class="btn-primary">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 11 12 14 22 4"/>
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+        </svg>
+        Start Assessment
+      </a>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid">
+    <div class="kpi-card kpi-total">
+      <div class="kpi-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+      </div>
+      <div class="kpi-content">
+        <span class="kpi-value">{{ complianceService.totalCount() }}</span>
+        <span class="kpi-label">Total Requirements</span>
+      </div>
+    </div>
+
+    <div class="kpi-card kpi-pass">
+      <div class="kpi-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+      <div class="kpi-content">
+        <span class="kpi-value">{{ complianceService.passedCount() }}</span>
+        <span class="kpi-label">Passed</span>
+      </div>
+    </div>
+
+    <div class="kpi-card kpi-fail">
+      <div class="kpi-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </div>
+      <div class="kpi-content">
+        <span class="kpi-value">{{ complianceService.failedCount() }}</span>
+        <span class="kpi-label">Failed</span>
+      </div>
+    </div>
+
+    <div class="kpi-card kpi-pending">
+      <div class="kpi-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+      </div>
+      <div class="kpi-content">
+        <span class="kpi-value">{{ complianceService.notReviewedCount() }}</span>
+        <span class="kpi-label">Not Reviewed</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Score + Levels Row -->
+  <div class="mid-row">
+
+    <!-- Score Panel -->
+    <div class="score-panel card">
+      <div class="card-header">
+        <h3>Overall Compliance Score</h3>
+        <span class="risk-badge" [class]="getRiskClass()">{{ getRiskLabel() }}</span>
+      </div>
+
+      <div class="score-display">
+        <div class="score-circle-wrap">
+          <svg viewBox="0 0 120 120" class="score-circle-svg">
+            <circle class="circle-bg" cx="60" cy="60" r="50"/>
+            <circle class="circle-fg"
+              cx="60" cy="60" r="50"
+              [attr.stroke-dasharray]="(complianceService.scorePercentage() * 3.14159) + ' 314.159'"
+              stroke-dashoffset="0"/>
+          </svg>
+          <div class="score-center">
+            <span class="score-pct">{{ complianceService.scorePercentage() }}%</span>
+            <span class="score-sub">Compliant</span>
+          </div>
+        </div>
+
+        <div class="score-breakdown">
+          <div class="breakdown-item pass">
+            <div class="breakdown-dot"></div>
+            <div class="breakdown-info">
+              <span class="breakdown-val">{{ complianceService.passedCount() }}</span>
+              <span class="breakdown-lbl">Passed</span>
+            </div>
+          </div>
+          <div class="breakdown-item fail">
+            <div class="breakdown-dot"></div>
+            <div class="breakdown-info">
+              <span class="breakdown-val">{{ complianceService.failedCount() }}</span>
+              <span class="breakdown-lbl">Failed</span>
+            </div>
+          </div>
+          <div class="breakdown-item pending">
+            <div class="breakdown-dot"></div>
+            <div class="breakdown-info">
+              <span class="breakdown-val">{{ complianceService.notReviewedCount() }}</span>
+              <span class="breakdown-lbl">Pending</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="score-progress-wrap">
+        <div class="prog-row">
+          <span>Passed</span>
+          <span>{{ complianceService.passedCount() }} / {{ complianceService.totalCount() }}</span>
+        </div>
+        <div class="prog-bar">
+          <div class="prog-fill pass" [style.width.%]="complianceService.totalCount() > 0 ? (complianceService.passedCount() / complianceService.totalCount()) * 100 : 0"></div>
+        </div>
+        <div class="prog-row">
+          <span>Failed</span>
+          <span>{{ complianceService.failedCount() }} / {{ complianceService.totalCount() }}</span>
+        </div>
+        <div class="prog-bar">
+          <div class="prog-fill fail" [style.width.%]="complianceService.totalCount() > 0 ? (complianceService.failedCount() / complianceService.totalCount()) * 100 : 0"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Levels Panel -->
+    <div class="levels-panel card">
+      <div class="card-header">
+        <h3>Requirements by Level</h3>
+      </div>
+      <div class="level-items">
+        <div class="level-item">
+          <div class="level-label">
+            <span class="level-badge l1">L1</span>
+            <span class="level-name">Basic Security</span>
+          </div>
+          <div class="level-bar-wrap">
+            <div class="level-bar">
+              <div class="level-fill" [style.width.%]="complianceService.totalCount() > 0 ? (l1Count / complianceService.totalCount()) * 100 : 0"></div>
+            </div>
+            <span class="level-count">{{ l1Count }}</span>
+          </div>
+        </div>
+        <div class="level-item">
+          <div class="level-label">
+            <span class="level-badge l2">L2</span>
+            <span class="level-name">Standard Security</span>
+          </div>
+          <div class="level-bar-wrap">
+            <div class="level-bar">
+              <div class="level-fill" [style.width.%]="complianceService.totalCount() > 0 ? (l2Count / complianceService.totalCount()) * 100 : 0"></div>
+            </div>
+            <span class="level-count">{{ l2Count }}</span>
+          </div>
+        </div>
+        <div class="level-item">
+          <div class="level-label">
+            <span class="level-badge l3">L3</span>
+            <span class="level-name">Advanced Security</span>
+          </div>
+          <div class="level-bar-wrap">
+            <div class="level-bar">
+              <div class="level-fill" [style.width.%]="complianceService.totalCount() > 0 ? (l3Count / complianceService.totalCount()) * 100 : 0"></div>
+            </div>
+            <span class="level-count">{{ l3Count }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="chapters-info">
+        <div class="chapters-stat">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+          </svg>
+          <span>{{ chapters.length }} Chapters covered</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Failed Areas -->
+    <div class="failed-panel card" *ngIf="getTopFailedByChapter().length > 0">
+      <div class="card-header">
+        <h3>Top Failed Areas</h3>
+        <span class="badge-count">{{ complianceService.failedCount() }} total</span>
+      </div>
+      <div class="failed-list">
+        <div class="failed-item" *ngFor="let item of getTopFailedByChapter(); let i = index">
+          <div class="failed-rank">{{ i + 1 }}</div>
+          <div class="failed-info">
+            <span class="failed-chapter">{{ item.chapter }}</span>
+            <div class="failed-bar-wrap">
+              <div class="failed-bar">
+                <div class="failed-fill" [style.width.%]="complianceService.failedCount() > 0 ? (item.count / complianceService.failedCount()) * 100 : 0"></div>
+              </div>
+              <span class="failed-count">{{ item.count }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Chapters Grid -->
+  <div class="section-header">
+    <h2>Chapter Breakdown</h2>
+    <span class="section-count">{{ chapters.length }} chapters</span>
+  </div>
+
+  <div class="chapters-grid">
+    <div class="chapter-card card" *ngFor="let chapter of chapters">
+      <div class="chapter-head">
+        <div class="chapter-badge">V{{ chapter.id }}</div>
+        <div class="chapter-meta">
+          <span class="chapter-name">{{ chapter.title }}</span>
+          <span class="chapter-total">{{ chapter.total }} requirements</span>
+        </div>
+      </div>
+      <div class="chapter-stats">
+        <div class="chapter-stat pass">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          <span>{{ chapter.passed }}</span>
+        </div>
+        <div class="chapter-stat fail">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+          <span>{{ chapter.failed }}</span>
+        </div>
+        <div class="chapter-stat pending">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span>{{ chapter.total - chapter.passed - chapter.failed }}</span>
+        </div>
+      </div>
+      <div class="chapter-progress">
+        <div class="chapter-prog-bar">
+          <div class="chapter-prog-pass" [style.width.%]="chapter.total > 0 ? (chapter.passed / chapter.total) * 100 : 0"></div>
+          <div class="chapter-prog-fail" [style.width.%]="chapter.total > 0 ? (chapter.failed / chapter.total) * 100 : 0"></div>
+        </div>
+        <span class="chapter-pct" *ngIf="chapter.total > 0">{{ chapter.percentage }}%</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<ng-template #loadingTpl>
+  <div class="loading-wrap">
+    <div class="loading-spinner"></div>
+    <p>Loading ASVS requirements...</p>
+  </div>
+</ng-template>

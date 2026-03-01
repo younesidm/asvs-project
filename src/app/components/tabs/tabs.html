@@ -1,0 +1,58 @@
+<div class="tabs-page" *ngIf="!loading; else loadingTpl">
+
+  <div class="tabs-header">
+    <div class="tabs-header-text">
+      <h1>ASVS Requirements</h1>
+      <p>Review and assess each security requirement</p>
+    </div>
+
+    <div class="tabs-summary" *ngIf="complianceService.totalCount() > 0">
+      <div class="summary-item pass">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        <span>{{ complianceService.passedCount() }} Passed</span>
+      </div>
+      <div class="summary-item fail">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+        <span>{{ complianceService.failedCount() }} Failed</span>
+      </div>
+      <div class="summary-item score">
+        <span>{{ complianceService.scorePercentage() }}% Score</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs-bar">
+    <button
+      *ngFor="let chapter of chapters"
+      (click)="selectChapter(chapter)"
+      [class.active]="chapter === selectedChapter"
+      class="tab-btn"
+      [title]="chapter">
+      <span class="tab-id">V{{ getChapterIndex(chapter) }}</span>
+      <span class="tab-label">{{ chapter }}</span>
+      <div class="tab-mini-stats" *ngIf="getChapterStats(chapter).passed > 0 || getChapterStats(chapter).failed > 0">
+        <span class="mini-pass">{{ getChapterStats(chapter).passed }}</span>
+        <span class="mini-fail">{{ getChapterStats(chapter).failed }}</span>
+      </div>
+    </button>
+  </div>
+
+  <app-requirement-table
+    [selectedChapter]="selectedChapter">
+  </app-requirement-table>
+
+</div>
+
+<ng-template #loadingTpl>
+  <div class="loading-wrap">
+    <div class="loading-spinner"></div>
+    <p>Loading ASVS requirements...</p>
+  </div>
+</ng-template>
